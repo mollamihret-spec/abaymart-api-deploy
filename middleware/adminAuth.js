@@ -1,6 +1,6 @@
 const admin = require("../firebaseAdmin");
 
-const ADMIN_EMAILS = ["molla@gmail.com"]; 
+const ADMIN_EMAILS = ["molamihert@gmail.com"]; 
 
 const adminAuth = async (req, res, next) => {
   try {
