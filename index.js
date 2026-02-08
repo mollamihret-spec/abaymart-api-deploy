@@ -53,8 +53,7 @@ mysqlConnection.connect((err) => {
   else console.log("Connected to MySQL database");
 });
 
-import dbTestRoutes from "./routes/dbTest.routes";
-
+const dbTestRoutes = require("./routes/dbTest.routes");
 app.use("/api/db-test", dbTestRoutes);
 
 

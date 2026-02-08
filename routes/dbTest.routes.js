@@ -1,6 +1,5 @@
-// dbTest.routes.js
 const express = require("express");
-const db = require("../DB/mysql.js"); // keep your path correct
+const db = require("../DB/mysql.js");
 
 const router = express.Router();
 
