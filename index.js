@@ -58,7 +58,7 @@ import dbTestRoutes from "./routes/dbTest.routes";
 app.use("/api/db-test", dbTestRoutes);
 
 
- ===== ROUTES (UNCHANGED) =====
+// ===== ROUTES (UNCHANGED) =====
 app.get("/", (req, res) => {
   res.send("Server is now running...");
 });
