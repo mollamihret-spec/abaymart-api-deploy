@@ -55,7 +55,7 @@ mysqlConnection.connect((err) => {
 
 // ===== ROUTES (UNCHANGED) =====
 app.get("/", (req, res) => {
-  res.send("Server is running...");
+  res.send("Server is now running...");
 });
 
 app.get("/install", (req, res) => {
