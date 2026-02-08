@@ -14,6 +14,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "firebase-admin": "^13.6.0",
+    "groq-sdk": "^0.37.0",
     "mysql": "^2.18.1",
     "mysql2": "^3.16.0",
     "stripe": "^20.1.0"
