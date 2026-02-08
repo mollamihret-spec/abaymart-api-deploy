@@ -54,7 +54,6 @@ mysqlConnection.connect((err) => {
 });
 
 import dbTestRoutes from "./routes/dbTest.routes";
-
 app.use("/api/db-test", dbTestRoutes);
 
 
