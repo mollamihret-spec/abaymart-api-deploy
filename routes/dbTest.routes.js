@@ -1,5 +1,6 @@
-import express from "express";
-import db from "../DB/mysql.js";
+// dbTest.routes.js
+const express = require("express");
+const db = require("../DB/mysql.js"); // keep your path correct
 
 const router = express.Router();
 
@@ -13,4 +14,4 @@ router.get("/", async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;
