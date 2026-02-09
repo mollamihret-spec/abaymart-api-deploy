@@ -13,9 +13,9 @@ router.post("/", async (req, res) => {
     // 1️⃣ Extract budget
     const budget = extractBudget(question);
 
-    // 2️⃣ Fetch products (filtered if budget exists)
+    // 2️⃣ Fetch products
     let products;
-    if (budget !== null) {
+    if (budget && budget > 0) {
       [products] = await db.query(
         "SELECT id, title, price, category FROM products WHERE price <= ? LIMIT 50",
         [budget]
@@ -26,7 +26,7 @@ router.post("/", async (req, res) => {
       );
     }
 
-    // 3️⃣ Build a strong AI prompt
+    // 3️⃣ Build AI prompt
     const prompt = `
 You are an AI shopping assistant.
 
@@ -34,7 +34,7 @@ User question:
 "${question}"
 
 IMPORTANT CONTEXT (DO NOT GUESS):
-- User budget: ${budget !== null ? `$${budget} USD` : "Not specified"}
+- User budget: ${budget && budget > 0 ? `$${budget} USD` : "Not specified"}
 - Products provided below are the ONLY products you may recommend
 - Prices are FINAL and in USD
 
@@ -50,14 +50,14 @@ Instructions:
 - NEVER invent products or prices
 `;
 
-    // 4️⃣ Call Groq API
+    // 4️⃣ Call Groq
     const answerText = await queryGroq(prompt);
 
-    // 5️⃣ Return both structured data and AI text
+    // 5️⃣ Return results
     res.json({
       success: true,
       answer: answerText,
-      products // this can be empty if none match
+      products
     });
   } catch (err) {
     console.error(err);
