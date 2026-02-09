@@ -16,12 +16,26 @@ router.post("/", async (req, res) => {
     );
 
     // 2️⃣ Create prompt for Groq
-    const prompt = `
-      You are an AI assistant for an e-commerce store.
-      Question: ${question}
-      Products: ${JSON.stringify(products)}
-      Provide a concise, helpful answer.
-    `;
+  const prompt = `
+You are an intelligent shopping assistant for an e-commerce website.
+
+User question:
+"${question}"
+
+Available products (real data from database, prices in USD):
+${JSON.stringify(products)}
+
+Instructions:
+- Answer the user's question naturally
+- If the question implies a budget, respect it
+- If the question implies a category, focus on that category
+- Recommend relevant products when appropriate
+- Do NOT invent products or prices
+- Do NOT mention "$0" unless a product is free
+- If no products match, say so politely
+- Keep answers helpful and concise
+`;
+
 
     // 3️⃣ Call Groq
     const answer = await queryGroq(prompt);
