@@ -17,12 +17,12 @@ router.post("/", async (req, res) => {
     let products;
     if (budget && budget > 0) {
       [products] = await db.query(
-        "SELECT id, title, price, category FROM products WHERE price <= ? LIMIT 50",
+        "SELECT id, image, title, price, category FROM products WHERE price <= ? LIMIT 50",
         [budget]
       );
     } else {
       [products] = await db.query(
-        "SELECT id, title, price, category FROM products LIMIT 50"
+        "SELECT id, image, title, price, category FROM products LIMIT 50"
       );
     }
 
