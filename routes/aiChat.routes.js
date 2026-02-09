@@ -12,7 +12,6 @@ router.post("/", async (req, res) => {
   try {
     // 1️⃣ Extract budget
     const budget = extractBudget(question);
-
     // 2️⃣ Fetch products
     let products;
     if (budget && budget > 0) {
