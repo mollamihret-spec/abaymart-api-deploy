@@ -21,7 +21,6 @@ router.post("/", async (req, res) => {
         [budget]
       );
     } else {
-      
       [products] = await db.query(
         "SELECT id, image, title, price, category FROM products LIMIT 50"
       );
