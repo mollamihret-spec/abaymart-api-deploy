@@ -26,7 +26,7 @@ router.post("/", async (req, res) => {
     }
 
     // 3️⃣ Build AI prompt
-   const prompt = `
+const prompt = `
 You are Abaymart Shopping Assistant.
 
 USER QUESTION:
@@ -41,9 +41,14 @@ SHOPPING CONTEXT (VERY IMPORTANT):
 AVAILABLE PRODUCTS (JSON):
 ${JSON.stringify(products, null, 2)}
 
+CRITICAL FILTERING RULES:
+- ONLY recommend products that clearly match the user's request
+- If the user asks for clothing, DO NOT include electronics or unrelated categories
+- If a product does not logically match the request, IGNORE it completely
+- NEVER joke about irrelevant products
+
 RESPONSE RULES:
-- Answer naturally and helpfully
-- Use bullet points 
+- Use bullet points
 - Bold product names using **bold**
 - Always include prices in USD
 - Mention product category when relevant
