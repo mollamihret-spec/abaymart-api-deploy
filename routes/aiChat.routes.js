@@ -3,11 +3,14 @@ const { queryGroq } = require("../helpers/groq");
 const { extractBudget } = require("../helpers/extractBudget");
 const db = require("../DB/mysql");
 const { detectCategory } = require("../utils/detectCategory");
+const { extractKeywords } = require("../utils/extractKeywords");
 
 const router = express.Router();
 
 router.post("/", async (req, res) => {
   const { question } = req.body;
+  const keywords = extractKeywords(question);
+
   if (!question) {
     return res.status(400).json({ error: "Question required" });
   }

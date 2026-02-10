@@ -1,5 +1,7 @@
 function detectCategory(question) {
   const q = question.toLowerCase();
+  
+
 
   // 🔌 Electronics
   if (/phone|mobile|laptop|electronics|ssd|computer|headphone|earphone|tv|camera/.test(q)) {
