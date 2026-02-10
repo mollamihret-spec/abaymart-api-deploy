@@ -42,6 +42,11 @@ ${JSON.stringify(products)}
 
 Instructions:
 - Answer naturally and helpfully
+- Short paragraphs or bullet points
+- Bold product names
+- Include prices in USD
+- Mention categories if relevant
+- Friendly tone with emojis if appropriate
 - Recommend only from provided products
 - Respect budget if specified
 - Mention category if relevant
