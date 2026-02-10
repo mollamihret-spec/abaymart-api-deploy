@@ -8,7 +8,9 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
   const { question } = req.body;
-  if (!question) return res.status(400).json({ error: "Question required" });
+  if (!question) {
+    return res.status(400).json({ error: "Question required" });
+  }
 
   try {
     // 1️⃣ Extract budget
@@ -35,9 +37,24 @@ router.post("/", async (req, res) => {
     sql += " LIMIT 10";
 
     // 4️⃣ Fetch products
-    const [products] = await db.query(sql, params);
+    const [rawProducts] = await db.query(sql, params);
 
-    // 5️⃣ Build AI prompt
+    // 5️⃣ HARD SAFETY FILTER (prevents unrelated products)
+    const products = categoryIntent
+      ? rawProducts.filter(p => p.category === categoryIntent)
+      : rawProducts;
+
+    // 6️⃣ If no products, return polite response (prevents AI hallucination)
+    if (products.length === 0) {
+      return res.json({
+        success: true,
+        answer:
+          "Sorry 😕 I couldn’t find products that match your request. Try adjusting the category, wording, or budget.",
+        products: []
+      });
+    }
+
+    // 7️⃣ Build AI prompt
     const prompt = `
 You are Abaymart Shopping Assistant.
 
@@ -70,18 +87,21 @@ Short 1-sentence description explaining why it’s a good choice
 - If no products match, say so clearly and politely
 `;
 
-    // 6️⃣ Call Groq
+    // 8️⃣ Call Groq
     const answerText = await queryGroq(prompt);
 
-    // 7️⃣ Return response
+    // 9️⃣ Return response
     res.json({
       success: true,
       answer: answerText,
       products
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error("AI search error:", err);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error"
+    });
   }
 });
 
