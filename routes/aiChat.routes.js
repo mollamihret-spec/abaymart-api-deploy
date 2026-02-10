@@ -9,8 +9,6 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
   const { question } = req.body;
-  const keywords = extractKeywords(question);
-
   if (!question) {
     return res.status(400).json({ error: "Question required" });
   }
@@ -22,32 +20,46 @@ router.post("/", async (req, res) => {
     // 2️⃣ Detect category intent
     const categoryIntent = detectCategory(question);
 
-    // 3️⃣ Build SQL dynamically
+    // 3️⃣ Extract keywords
+    const keywords = extractKeywords(question);
+
+    // 4️⃣ Build SQL dynamically
     let sql =
       "SELECT id, image, title, rating_count, rating_rate, price, category FROM products";
     const params = [];
 
+    // Category filter
     if (categoryIntent) {
       sql += " WHERE category = ?";
       params.push(categoryIntent);
     }
 
+    // Budget filter
     if (budget && budget > 0) {
       sql += categoryIntent ? " AND price <= ?" : " WHERE price <= ?";
       params.push(budget);
     }
 
+    // Keyword filter
+    if (keywords.length > 0) {
+      const keywordConditions = keywords.map(() => "title LIKE ?").join(" OR ");
+      const keywordParams = keywords.map(k => `%${k}%`);
+      sql += params.length > 0 ? ` AND (${keywordConditions})` : ` WHERE (${keywordConditions})`;
+      params.push(...keywordParams);
+    }
+
+    // Limit results
     sql += " LIMIT 10";
 
-    // 4️⃣ Fetch products
+    // 5️⃣ Fetch products from DB
     const [rawProducts] = await db.query(sql, params);
 
-    // 5️⃣ HARD SAFETY FILTER (prevents unrelated products)
+    // 6️⃣ Hard safety filter to prevent unrelated products
     const products = categoryIntent
       ? rawProducts.filter(p => p.category === categoryIntent)
       : rawProducts;
 
-    // 6️⃣ If no products, return polite response (prevents AI hallucination)
+    // 7️⃣ If no products found
     if (products.length === 0) {
       return res.json({
         success: true,
@@ -57,7 +69,7 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // 7️⃣ Build AI prompt
+    // 8️⃣ Build AI prompt
     const prompt = `
 You are Abaymart Shopping Assistant.
 
@@ -90,10 +102,10 @@ Short 1-sentence description explaining why it’s a good choice
 - If no products match, say so clearly and politely
 `;
 
-    // 8️⃣ Call Groq
+    // 9️⃣ Call Groq
     const answerText = await queryGroq(prompt);
 
-    // 9️⃣ Return response
+    // 🔟 Return response
     res.json({
       success: true,
       answer: answerText,
