@@ -41,21 +41,22 @@ SHOPPING CONTEXT (VERY IMPORTANT):
 AVAILABLE PRODUCTS (JSON):
 ${JSON.stringify(products, null, 2)}
 
-CRITICAL FILTERING RULES:
-- ONLY recommend products that clearly match the user's request
-- If the user asks for clothing, DO NOT include electronics or unrelated categories
-- If a product does not logically match the request, IGNORE it completely
-- NEVER joke about irrelevant products
+RESPONSE FORMAT (MANDATORY):
+- Start with a friendly 1–2 sentence introduction
+- Use the bullet symbol "•" (not dashes, not markdown lists)
+- Each product must follow this structure:
 
-RESPONSE RULES:
-- Use bullet points
-- Bold product names using **bold**
-- Always include prices in USD
-- Mention product category when relevant
-- Friendly shopping tone (light emojis 🛍️✨)
-- Respect the budget strictly
+• Product Name – $PRICE  
+Short 1-sentence description explaining why it’s a good choice
+
+- After listing products, add a short closing sentence offering help
+- Keep tone friendly and professional
+- DO NOT use markdown lists
+- DO NOT joke
+- Recommend only relevant products
 - If no products match, say so clearly and politely
 `;
+
 
 
     // 4️⃣ Call Groq
