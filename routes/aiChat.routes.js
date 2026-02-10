@@ -2,6 +2,7 @@ const express = require("express");
 const { queryGroq } = require("../helpers/groq");
 const { extractBudget } = require("../helpers/extractBudget");
 const db = require("../DB/mysql");
+const { detectCategory } = require("../utils/detectCategory");
 
 const router = express.Router();
 
@@ -12,27 +13,39 @@ router.post("/", async (req, res) => {
   try {
     // 1️⃣ Extract budget
     const budget = extractBudget(question);
-    // 2️⃣ Fetch products
-    let products;
-    if (budget && budget > 0) {
-      [products] = await db.query(
-        "SELECT id, image, title,  rating_count, rating_rate, price, category FROM products WHERE price <= ? LIMIT 10",
-        [budget]
-      );
-    } else {
-      [products] = await db.query(
-        "SELECT id, image, title,  rating_count, rating_rate, price, category FROM products LIMIT 10"
-      );
+
+    // 2️⃣ Detect category intent
+    const categoryIntent = detectCategory(question);
+
+    // 3️⃣ Build SQL dynamically
+    let sql =
+      "SELECT id, image, title, rating_count, rating_rate, price, category FROM products";
+    const params = [];
+
+    if (categoryIntent) {
+      sql += " WHERE category = ?";
+      params.push(categoryIntent);
     }
 
-    // 3️⃣ Build AI prompt
-const prompt = `
+    if (budget && budget > 0) {
+      sql += categoryIntent ? " AND price <= ?" : " WHERE price <= ?";
+      params.push(budget);
+    }
+
+    sql += " LIMIT 10";
+
+    // 4️⃣ Fetch products
+    const [products] = await db.query(sql, params);
+
+    // 5️⃣ Build AI prompt
+    const prompt = `
 You are Abaymart Shopping Assistant.
 
 USER QUESTION:
 "${question}"
 
 SHOPPING CONTEXT (VERY IMPORTANT):
+- Detected category: ${categoryIntent || "Not specified"}
 - User budget: ${budget && budget > 0 ? `$${budget} USD` : "Not specified"}
 - You may ONLY recommend products listed below
 - Prices are FINAL and in USD
@@ -57,12 +70,10 @@ Short 1-sentence description explaining why it’s a good choice
 - If no products match, say so clearly and politely
 `;
 
-
-
-    // 4️⃣ Call Groq
+    // 6️⃣ Call Groq
     const answerText = await queryGroq(prompt);
 
-    // 5️⃣ Return results
+    // 7️⃣ Return response
     res.json({
       success: true,
       answer: answerText,
