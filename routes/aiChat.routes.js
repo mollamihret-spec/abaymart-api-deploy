@@ -43,7 +43,7 @@ ${JSON.stringify(products, null, 2)}
 
 RESPONSE RULES:
 - Answer naturally and helpfully
-- Use short paragraphs or bullet points
+- Use bullet points 
 - Bold product names using **bold**
 - Always include prices in USD
 - Mention product category when relevant
