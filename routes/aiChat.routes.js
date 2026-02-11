@@ -19,7 +19,15 @@ router.post("/", async (req, res) => {
     const budget = extractBudget(question);
 
     // 2️⃣ Detect category intent
-    const categoryIntent = detectCategory(question);
+    const categoryIntent = detectCategory(question); // now an array
+
+// Category filter
+if (categoryIntent && categoryIntent.length > 0) {
+  const placeholders = categoryIntent.map(() => "?").join(",");
+  sql += ` WHERE category IN (${placeholders})`;
+  params.push(...categoryIntent);
+}
+
 
     // 3️⃣ Extract keywords
     const keywords = extractKeywords(question);
