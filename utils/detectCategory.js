@@ -15,12 +15,12 @@ function detectCategory(question) {
 
   // 👔 Men's Clothing
   if (/men|male|men's|shirt|t-shirt|jacket|hoodie|pant|jeans|wear/.test(q)) {
-    return "men's clothing";
+    return "mens-clothing";
   }
 
   // 👗 Women's Clothing
   if (/women|female|women's|dress|skirt|blouse|top|gown/.test(q)) {
-    return "women's clothing";
+    return "women-clothing";
   }
 
   return null;
