@@ -24,27 +24,24 @@ router.post("/", async (req, res) => {
     // 3️⃣ Extract keywords
     const keywords = extractKeywords(question);
 
-    // vibe word recognition
+    // 4️⃣ Extract vibe words
     const vibes = extractVibe(question);
 
-    // 4️⃣ Build SQL dynamically
+    // 5️⃣ Build SQL dynamically
     let sql =
       "SELECT id, image, title, rating_count, rating_rate, price, category FROM products";
     const params = [];
 
-    // Category filter
     if (categoryIntent) {
       sql += " WHERE category = ?";
       params.push(categoryIntent);
     }
 
-    // Budget filter
     if (budget && budget > 0) {
       sql += categoryIntent ? " AND price <= ?" : " WHERE price <= ?";
       params.push(budget);
     }
 
-    // Keyword filter
     if (keywords.length > 0) {
       const keywordConditions = keywords.map(() => "title LIKE ?").join(" OR ");
       const keywordParams = keywords.map(k => `%${k}%`);
@@ -52,64 +49,54 @@ router.post("/", async (req, res) => {
       params.push(...keywordParams);
     }
 
-    // Limit results
-    sql += " LIMIT 10";
+    sql += " LIMIT 20"; // get more for ranking
 
-    // 5️⃣ Fetch products from DB
-let [rawProducts] = await db.query(sql, params);
+    // 6️⃣ Fetch products
+    let [rawProducts] = await db.query(sql, params);
 
-// 🔥 SMART FALLBACK (if keyword filtering blocks everything)
-if (rawProducts.length === 0 && keywords.length > 0) {
-  let fallbackSQL =
-    "SELECT id, image, title, rating_count, rating_rate, price, category FROM products";
-  const fallbackParams = [];
+    // 🔥 Smart fallback if SQL returns nothing
+    if (rawProducts.length === 0 && keywords.length > 0) {
+      let fallbackSQL =
+        "SELECT id, image, title, rating_count, rating_rate, price, category FROM products";
+      const fallbackParams = [];
+      if (categoryIntent) {
+        fallbackSQL += " WHERE category = ?";
+        fallbackParams.push(categoryIntent);
+      }
+      if (budget && budget > 0) {
+        fallbackSQL += categoryIntent ? " AND price <= ?" : " WHERE price <= ?";
+        fallbackParams.push(budget);
+      }
+      fallbackSQL += " LIMIT 20";
+      const [fallbackProducts] = await db.query(fallbackSQL, fallbackParams);
+      rawProducts = fallbackProducts;
+    }
 
-  if (categoryIntent) {
-    fallbackSQL += " WHERE category = ?";
-    fallbackParams.push(categoryIntent);
-  }
-
-  if (budget && budget > 0) {
-    fallbackSQL += categoryIntent ? " AND price <= ?" : " WHERE price <= ?";
-    fallbackParams.push(budget);
-  }
-
-  fallbackSQL += " LIMIT 10";
-
-  const [fallbackProducts] = await db.query(fallbackSQL, fallbackParams);
-  rawProducts = fallbackProducts;
-}
-
-
-  // 6️⃣ Apply category safety first
-let products = categoryIntent
-  ? rawProducts.filter(p => p.category === categoryIntent)
-  : rawProducts;
-
-// 7️⃣ Apply vibe ranking if vibe words exist
-if (vibes.length > 0) {
-  products = products
-    .map(product => {
+    // 7️⃣ Calculate relevance score based on keywords + vibes
+    let products = rawProducts.map(product => {
       let score = 0;
       const title = product.title.toLowerCase();
 
-      vibes.forEach(vibe => {
-        if (title.includes(vibe.toLowerCase())) {
-          score += 2;
-        }
+      // keyword match stronger
+      keywords.forEach(keyword => {
+        if (title.includes(keyword.toLowerCase())) score += 3;
       });
 
-      return { ...product, vibeScore: score };
-    })
-    .filter(p => p.vibeScore > 0) // 🔥 remove unrelated
-    .sort((a, b) => b.vibeScore - a.vibeScore);
-}
+      // vibe match lighter
+      vibes.forEach(vibe => {
+        if (title.includes(vibe.toLowerCase())) score += 2;
+      });
 
-// Final safety limit
-products = products.slice(0, 10);
+      return { ...product, relevanceScore: score };
+    });
 
+    // Sort products by relevance score
+    products.sort((a, b) => b.relevanceScore - a.relevanceScore);
 
-    // 7️⃣ If no products found
+    // Final safety limit
+    products = products.slice(0, 10);
+
+    // 8️⃣ If no products found
     if (products.length === 0) {
       return res.json({
         success: true,
@@ -119,7 +106,7 @@ products = products.slice(0, 10);
       });
     }
 
-    // 8️⃣ Build AI prompt
+    // 9️⃣ Build AI prompt
     const prompt = `
 You are Abaymart Shopping Assistant.
 
@@ -133,14 +120,6 @@ SHOPPING CONTEXT (VERY IMPORTANT):
 - You may ONLY recommend products listed below
 - Prices are FINAL and in USD
 - NEVER invent products, prices, ratings, or details
-
-If vibe words exist:
-- Choose products that best match the emotional intent.
-- Rank products based on vibe relevance.
-- Explain briefly why each product fits the vibe.
-
-If no vibe words:
-- Just recommend the most relevant and high-rated products.
 
 AVAILABLE PRODUCTS (JSON):
 ${JSON.stringify(products, null, 2)}
@@ -161,10 +140,10 @@ Short 1-sentence description explaining why it’s a good choice
 - If no products match, say so clearly and politely
 `;
 
-    // 9️⃣ Call Groq
+    // 🔟 Call Groq
     const answerText = await queryGroq(prompt);
 
-    // 🔟 Return response
+    // 1️⃣1️⃣ Return response
     res.json({
       success: true,
       answer: answerText,
