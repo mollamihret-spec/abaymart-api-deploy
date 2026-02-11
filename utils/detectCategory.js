@@ -19,7 +19,7 @@ function detectCategory(question) {
   }
 
   // 👗 Women's Clothing
-  if (/women|girl|female|women's|dress|skirt|blouse|top|gown/.test(q)) {
+  if (/women|female|women's|dress|skirt|blouse|top|gown/.test(q)) {
     return "women-clothing";
   }
 
