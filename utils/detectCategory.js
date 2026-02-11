@@ -15,7 +15,7 @@ function detectCategory(question) {
 
   // 👔 Men's Clothing
   if (/men|male|men's|shirt|t-shirt|jacket|hoodie|pant|jeans|wear/.test(q)) {
-    return "mens clothing";
+    return "mens-clothing";
   }
 
   // 👗 Women's Clothing
