@@ -28,28 +28,42 @@ router.post("/", async (req, res) => {
     const vibes = extractVibe(question);
 
     // 5️⃣ Build SQL dynamically
-    let sql = "SELECT id, image, title, rating_count, rating_rate, price, category FROM products";
+    let sql = "SELECT id, image, title, rating_count, rating_rate, price, category, description FROM products";
     const params = [];
+    const conditions = [];
 
     // Category filter
     if (categoryIntent && categoryIntent.length > 0) {
       const placeholders = categoryIntent.map(() => "?").join(",");
-      sql += ` WHERE category IN (${placeholders})`;
+      conditions.push(`category IN (${placeholders})`);
       params.push(...categoryIntent);
     }
 
     // Budget filter
     if (budget && budget > 0) {
-      sql += params.length > 0 ? " AND price <= ?" : " WHERE price <= ?";
+      conditions.push("price <= ?");
       params.push(budget);
     }
 
     // Keyword filter
     if (keywords.length > 0) {
-      const keywordConditions = keywords.map(() => "title LIKE ?").join(" OR ");
-      const keywordParams = keywords.map(k => `%${k}%`);
-      sql += params.length > 0 ? ` AND (${keywordConditions})` : ` WHERE (${keywordConditions})`;
+      const keywordConditions = keywords.map(() => "title LIKE ? OR description LIKE ?").join(" OR ");
+      const keywordParams = keywords.flatMap(k => [`%${k}%`, `%${k}%`]);
+      conditions.push(`(${keywordConditions})`);
       params.push(...keywordParams);
+    }
+
+    // Vibe filter
+    if (vibes.length > 0) {
+      const vibeConditions = vibes.map(() => "title LIKE ? OR description LIKE ?").join(" OR ");
+      const vibeParams = vibes.flatMap(v => [`%${v}%`, `%${v}%`]);
+      conditions.push(`(${vibeConditions})`);
+      params.push(...vibeParams);
+    }
+
+    // Combine conditions
+    if (conditions.length > 0) {
+      sql += " WHERE " + conditions.join(" AND ");
     }
 
     // Limit results
@@ -59,21 +73,23 @@ router.post("/", async (req, res) => {
     let [rawProducts] = await db.query(sql, params);
 
     // 🔥 Smart fallback if no products found
-    if (rawProducts.length === 0 && keywords.length > 0) {
-      let fallbackSQL = "SELECT id, image, title, rating_count, rating_rate, price, category FROM products";
+    if (rawProducts.length === 0 && (keywords.length > 0 || vibes.length > 0)) {
+      let fallbackSQL = "SELECT id, image, title, rating_count, rating_rate, price, category, description FROM products";
       const fallbackParams = [];
+      const fallbackConditions = [];
 
       if (categoryIntent && categoryIntent.length > 0) {
         const placeholders = categoryIntent.map(() => "?").join(",");
-        fallbackSQL += ` WHERE category IN (${placeholders})`;
+        fallbackConditions.push(`category IN (${placeholders})`);
         fallbackParams.push(...categoryIntent);
       }
 
       if (budget && budget > 0) {
-        fallbackSQL += fallbackParams.length > 0 ? " AND price <= ?" : " WHERE price <= ?";
+        fallbackConditions.push("price <= ?");
         fallbackParams.push(budget);
       }
 
+      fallbackSQL += fallbackConditions.length > 0 ? " WHERE " + fallbackConditions.join(" AND ") : "";
       fallbackSQL += " LIMIT 20";
 
       const [fallbackProducts] = await db.query(fallbackSQL, fallbackParams);
@@ -84,15 +100,16 @@ router.post("/", async (req, res) => {
     let products = rawProducts.map(product => {
       let score = 0;
       const title = product.title.toLowerCase();
+      const description = product.description.toLowerCase();
 
       // keyword match stronger
       keywords.forEach(keyword => {
-        if (title.includes(keyword.toLowerCase())) score += 3;
+        if (title.includes(keyword.toLowerCase()) || description.includes(keyword.toLowerCase())) score += 3;
       });
 
       // vibe match lighter
       vibes.forEach(vibe => {
-        if (title.includes(vibe.toLowerCase())) score += 2;
+        if (title.includes(vibe.toLowerCase()) || description.includes(vibe.toLowerCase())) score += 2;
       });
 
       return { ...product, relevanceScore: score };
