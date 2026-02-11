@@ -1,6 +1,7 @@
 const express = require("express");
 const { queryGroq } = require("../helpers/groq");
 const { extractBudget } = require("../helpers/extractBudget");
+const { extractVibe } = require("../utils/extractVibe");
 const db = require("../DB/mysql");
 const { detectCategory } = require("../utils/detectCategory");
 const { extractKeywords } = require("../utils/extractKeywords");
@@ -22,6 +23,9 @@ router.post("/", async (req, res) => {
 
     // 3️⃣ Extract keywords
     const keywords = extractKeywords(question);
+
+    // vibe word recognition
+    const vibes = extractVibe(question);
 
     // 4️⃣ Build SQL dynamically
     let sql =
@@ -79,9 +83,18 @@ USER QUESTION:
 SHOPPING CONTEXT (VERY IMPORTANT):
 - Detected category: ${categoryIntent || "Not specified"}
 - User budget: ${budget && budget > 0 ? `$${budget} USD` : "Not specified"}
+- Detected vibe words: ${vibes.length ? vibes.join(", ") : "None"}
 - You may ONLY recommend products listed below
 - Prices are FINAL and in USD
 - NEVER invent products, prices, ratings, or details
+
+If vibe words exist:
+- Choose products that best match the emotional intent.
+- Rank products based on vibe relevance.
+- Explain briefly why each product fits the vibe.
+
+If no vibe words:
+- Just recommend the most relevant and high-rated products.
 
 AVAILABLE PRODUCTS (JSON):
 ${JSON.stringify(products, null, 2)}
