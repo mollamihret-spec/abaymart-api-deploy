@@ -81,10 +81,33 @@ if (rawProducts.length === 0 && keywords.length > 0) {
 }
 
 
-    // 6️⃣ Hard safety filter to prevent unrelated products
-    const products = categoryIntent
-      ? rawProducts.filter(p => p.category === categoryIntent)
-      : rawProducts;
+  // 6️⃣ Apply category safety first
+let products = categoryIntent
+  ? rawProducts.filter(p => p.category === categoryIntent)
+  : rawProducts;
+
+// 7️⃣ Apply vibe ranking if vibe words exist
+if (vibes.length > 0) {
+  products = products
+    .map(product => {
+      let score = 0;
+      const title = product.title.toLowerCase();
+
+      vibes.forEach(vibe => {
+        if (title.includes(vibe.toLowerCase())) {
+          score += 2;
+        }
+      });
+
+      return { ...product, vibeScore: score };
+    })
+    .filter(p => p.vibeScore > 0) // 🔥 remove unrelated
+    .sort((a, b) => b.vibeScore - a.vibeScore);
+}
+
+// Final safety limit
+products = products.slice(0, 10);
+
 
     // 7️⃣ If no products found
     if (products.length === 0) {
