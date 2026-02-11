@@ -56,7 +56,30 @@ router.post("/", async (req, res) => {
     sql += " LIMIT 10";
 
     // 5️⃣ Fetch products from DB
-    const [rawProducts] = await db.query(sql, params);
+let [rawProducts] = await db.query(sql, params);
+
+// 🔥 SMART FALLBACK (if keyword filtering blocks everything)
+if (rawProducts.length === 0 && keywords.length > 0) {
+  let fallbackSQL =
+    "SELECT id, image, title, rating_count, rating_rate, price, category FROM products";
+  const fallbackParams = [];
+
+  if (categoryIntent) {
+    fallbackSQL += " WHERE category = ?";
+    fallbackParams.push(categoryIntent);
+  }
+
+  if (budget && budget > 0) {
+    fallbackSQL += categoryIntent ? " AND price <= ?" : " WHERE price <= ?";
+    fallbackParams.push(budget);
+  }
+
+  fallbackSQL += " LIMIT 10";
+
+  const [fallbackProducts] = await db.query(fallbackSQL, fallbackParams);
+  rawProducts = fallbackProducts;
+}
+
 
     // 6️⃣ Hard safety filter to prevent unrelated products
     const products = categoryIntent
