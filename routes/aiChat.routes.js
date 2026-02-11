@@ -174,6 +174,7 @@ Short 1-sentence description explaining why it’s a good choice
       answer: answerText,
       products
     });
+    
   } catch (err) {
     console.error("AI search error:", err);
     res.status(500).json({
