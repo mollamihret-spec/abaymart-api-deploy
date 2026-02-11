@@ -10,72 +10,88 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
   const { question } = req.body;
+
   if (!question) {
     return res.status(400).json({ error: "Question required" });
   }
 
   try {
-    // 1️⃣ Extract budget
+    // 1️⃣ Extract info
     const budget = extractBudget(question);
-
-    // 2️⃣ Detect category intent (array)
-    const categoryIntent = detectCategory(question); // should return array of possible categories
-
-    // 3️⃣ Extract keywords
+    const categoryIntent = detectCategory(question);
     const keywords = extractKeywords(question);
-
-    // 4️⃣ Extract vibe words
     const vibes = extractVibe(question);
 
-    // 5️⃣ Build SQL dynamically
-    let sql = "SELECT id, image, title, rating_count, rating_rate, price, category, description FROM products";
-    const params = [];
-    const conditions = [];
+    // 2️⃣ Build SQL
+    let sql = `
+      SELECT id, image, title, rating_count, rating_rate, price, category, description 
+      FROM products
+    `;
 
-    // Category filter
+    const conditions = [];
+    const params = [];
+
+    // ✅ Category filter
     if (categoryIntent && categoryIntent.length > 0) {
       const placeholders = categoryIntent.map(() => "?").join(",");
       conditions.push(`category IN (${placeholders})`);
       params.push(...categoryIntent);
     }
 
-    // Budget filter
+    // ✅ Budget filter
     if (budget && budget > 0) {
       conditions.push("price <= ?");
       params.push(budget);
     }
 
-    // Keyword filter
+    // ✅ STRICT Keyword filter (ALL keywords must match)
     if (keywords.length > 0) {
-      const keywordConditions = keywords.map(() => "title LIKE ? OR description LIKE ?").join(" OR ");
-      const keywordParams = keywords.flatMap(k => [`%${k}%`, `%${k}%`]);
-      conditions.push(`(${keywordConditions})`);
-      params.push(...keywordParams);
+      const keywordConditions = keywords
+        .map(() => "(title LIKE ? OR description LIKE ?)")
+        .join(" AND ");
+
+      conditions.push(keywordConditions);
+
+      keywords.forEach(k => {
+        params.push(`%${k}%`);
+        params.push(`%${k}%`);
+      });
     }
 
-    // Vibe filter
+    // ✅ STRICT Vibe filter (ALL vibes must match)
     if (vibes.length > 0) {
-      const vibeConditions = vibes.map(() => "title LIKE ? OR description LIKE ?").join(" OR ");
-      const vibeParams = vibes.flatMap(v => [`%${v}%`, `%${v}%`]);
-      conditions.push(`(${vibeConditions})`);
-      params.push(...vibeParams);
+      const vibeConditions = vibes
+        .map(() => "(title LIKE ? OR description LIKE ?)")
+        .join(" AND ");
+
+      conditions.push(vibeConditions);
+
+      vibes.forEach(v => {
+        params.push(`%${v}%`);
+        params.push(`%${v}%`);
+      });
     }
 
-    // Combine conditions
+    // Combine WHERE
     if (conditions.length > 0) {
       sql += " WHERE " + conditions.join(" AND ");
     }
 
-    // Limit results
-    sql += " LIMIT 20";
- // 6️⃣ Fetch products from DB
+    sql += " LIMIT 30";
+
+    // 3️⃣ Execute query
     let [rawProducts] = await db.query(sql, params);
 
-    // 🔥 Smart fallback if no products found
+    // 🔥 Smart fallback (category + budget only)
     if (rawProducts.length === 0 && (keywords.length > 0 || vibes.length > 0)) {
-      let fallbackSQL = "SELECT id, image, title, rating_count, rating_rate, price, category, description FROM products";
-      const fallbackParams = [];
+
+      let fallbackSQL = `
+        SELECT id, image, title, rating_count, rating_rate, price, category, description 
+        FROM products
+      `;
+
       const fallbackConditions = [];
+      const fallbackParams = [];
 
       if (categoryIntent && categoryIntent.length > 0) {
         const placeholders = categoryIntent.map(() => "?").join(",");
@@ -88,86 +104,88 @@ router.post("/", async (req, res) => {
         fallbackParams.push(budget);
       }
 
-      fallbackSQL += fallbackConditions.length > 0 ? " WHERE " + fallbackConditions.join(" AND ") : "";
-      fallbackSQL += " LIMIT 20";
+      if (fallbackConditions.length > 0) {
+        fallbackSQL += " WHERE " + fallbackConditions.join(" AND ");
+      }
+
+      fallbackSQL += " LIMIT 30";
 
       const [fallbackProducts] = await db.query(fallbackSQL, fallbackParams);
       rawProducts = fallbackProducts;
     }
 
-    // 7️⃣ Apply relevance scoring (keywords + vibes)
+    // 4️⃣ Relevance scoring
     let products = rawProducts.map(product => {
       let score = 0;
       const title = product.title.toLowerCase();
-      const description = product.description.toLowerCase();
+      const description = product.description?.toLowerCase() || "";
 
-      // keyword match stronger
+      // Strong keyword weight
       keywords.forEach(keyword => {
-        if (title.includes(keyword.toLowerCase()) || description.includes(keyword.toLowerCase())) score += 3;
+        if (title.includes(keyword.toLowerCase())) score += 5;
+        if (description.includes(keyword.toLowerCase())) score += 3;
       });
 
-      // vibe match lighter
+      // Medium vibe weight
       vibes.forEach(vibe => {
-        if (title.includes(vibe.toLowerCase()) || description.includes(vibe.toLowerCase())) score += 2;
+        if (title.includes(vibe.toLowerCase())) score += 3;
+        if (description.includes(vibe.toLowerCase())) score += 2;
       });
 
       return { ...product, relevanceScore: score };
     });
 
+    // ❗ Remove irrelevant products
+    if (keywords.length > 0 || vibes.length > 0) {
+      products = products.filter(p => p.relevanceScore > 0);
+    }
+
     // Sort by relevance
     products.sort((a, b) => b.relevanceScore - a.relevanceScore);
 
-    // Limit final products
+    // Final limit
     products = products.slice(0, 10);
 
-    // 8️⃣ If still no products
+    // 5️⃣ If still empty
     if (products.length === 0) {
       return res.json({
         success: true,
         answer:
-          "Sorry 😕 I couldn’t find products that match your request. Try adjusting the category, wording, or budget.",
+          "Sorry 😕 I couldn’t find products that match your request. Try adjusting the wording or budget.",
         products: []
       });
     }
 
-    // 9️⃣ Build AI prompt
+    // 6️⃣ Build AI prompt
     const prompt = `
 You are Abaymart Shopping Assistant.
 
 USER QUESTION:
 "${question}"
 
-SHOPPING CONTEXT (VERY IMPORTANT):
-- Detected category: ${categoryIntent && categoryIntent.length > 0 ? categoryIntent.join(", ") : "Not specified"}
-- User budget: ${budget && budget > 0 ? `$${budget} USD` : "Not specified"}
+SHOPPING CONTEXT:
+- Detected category: ${categoryIntent?.length ? categoryIntent.join(", ") : "Not specified"}
+- User budget: ${budget ? `$${budget} USD` : "Not specified"}
 - Detected vibe words: ${vibes.length ? vibes.join(", ") : "None"}
-- You may ONLY recommend products listed below
-- Prices are FINAL and in USD
-- NEVER invent products, prices, ratings, or details
 
-AVAILABLE PRODUCTS (JSON):
+You may ONLY recommend products listed below.
+NEVER invent products.
+
+AVAILABLE PRODUCTS:
 ${JSON.stringify(products, null, 2)}
 
-RESPONSE FORMAT (MANDATORY):
-- Start with a friendly 1–2 sentence introduction
-- Use the bullet symbol "•" (not dashes, not markdown lists)
-- Each product must follow this structure:
+RESPONSE FORMAT:
+• Product Name – $PRICE
+Short 1-sentence explanation
 
-• Product Name – $PRICE  
-Short 1-sentence description explaining why it’s a good choice
-
-- After listing products, add a short closing sentence offering help
-- Keep tone friendly and professional
-- DO NOT use markdown lists
-- DO NOT joke
-- Recommend only relevant products
-- If no products match, say so clearly and politely
+No markdown lists.
+Be professional.
 `;
 
-    // 🔟 Call Groq AI
+    // 7️⃣ Call AI
     const answerText = await queryGroq(prompt);
 
-    // 1️⃣1️⃣ Return response
+    // 8️⃣ Send response
     res.json({
       success: true,
       answer: answerText,
