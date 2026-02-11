@@ -68,8 +68,7 @@ router.post("/", async (req, res) => {
 
     // Limit results
     sql += " LIMIT 20";
-
-    // 6️⃣ Fetch products from DB
+ // 6️⃣ Fetch products from DB
     let [rawProducts] = await db.query(sql, params);
 
     // 🔥 Smart fallback if no products found
@@ -174,7 +173,7 @@ Short 1-sentence description explaining why it’s a good choice
       answer: answerText,
       products
     });
-    
+
   } catch (err) {
     console.error("AI search error:", err);
     res.status(500).json({
