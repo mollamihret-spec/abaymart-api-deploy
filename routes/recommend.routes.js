@@ -44,7 +44,7 @@ module.exports = (db) => {
                 LEFT JOIN order_items oi ON p.id = oi.product_id
                 GROUP BY p.id, p.title, p.image, p.rating_count, p.rating_rate, p.price, p.category
                 ORDER BY sales DESC
-                LIMIT 8
+                LIMIT 10
               `, (err3, popular) => {
 
                 if (err3) {
@@ -143,7 +143,7 @@ module.exports = (db) => {
 
                 const recommendedIds = Object.entries(scores)
                   .sort((a, b) => b[1] - a[1])
-                  .slice(0, 10)
+                  .slice(0, 8)
                   .map(item => parseInt(item[0]));
 
                 const recommendedProducts = products.filter(p =>
