@@ -44,7 +44,7 @@ module.exports = (db) => {
                 LEFT JOIN order_items oi ON p.id = oi.product_id
                 GROUP BY p.id, p.title, p.image, p.price, p.category
                 ORDER BY sales DESC
-                LIMIT 10
+                LIMIT 8
               `, (err3, popular) => {
 
                 if (err3) {
