@@ -57,8 +57,7 @@ module.exports = (db) => {
 
               return;
             }
-
-            // 3️⃣ Get all orders for collaborative filtering
+  // 3️⃣ Get all orders for collaborative filtering
             db.query(`
               SELECT o.user_id, oi.product_id
               FROM orders o
