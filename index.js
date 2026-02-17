@@ -59,7 +59,7 @@ app.use("/api/db-test", dbTestRoutes);
 const aiChatRoutes = require("./routes/aiChat.routes");
 app.use("/api/ai-chat", aiChatRoutes);
 
-const recommendRoutes = require("./routes/recommend.routes");
+const recommendRoutes = require("./routes/recommend.routes")(mysqlConnection);
 app.use("/api/recommend", recommendRoutes);
 
 
