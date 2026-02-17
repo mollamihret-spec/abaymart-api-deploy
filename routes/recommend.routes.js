@@ -9,7 +9,7 @@ module.exports = (db) => {
 
     // 1️⃣ Get products
     db.query(
-      "SELECT id, title, image, price, category FROM products LIMIT 200",
+      "SELECT id, title, rating_rate, rating_count, image, price, category FROM products LIMIT 200",
       (err, products) => {
 
         if (err) {
@@ -38,11 +38,11 @@ module.exports = (db) => {
             // 🔥 Cold start → popular
             if (purchasedIds.length === 0) {
               db.query(`
-                SELECT p.id, p.title, p.image, p.price, p.category,
+                SELECT p.id, p.title, p.rating_count, p.rating_rate, p.image, p.price, p.category,
                        COUNT(oi.product_id) AS sales
                 FROM products p
                 LEFT JOIN order_items oi ON p.id = oi.product_id
-                GROUP BY p.id, p.title, p.image, p.price, p.category
+                GROUP BY p.id, p.title, p.image, p.rating_count, p.rating_rate, p.price, p.category
                 ORDER BY sales DESC
                 LIMIT 8
               `, (err3, popular) => {
