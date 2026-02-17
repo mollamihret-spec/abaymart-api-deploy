@@ -38,7 +38,7 @@ module.exports = (db) => {
             // 🔥 Cold start → popular
             if (purchasedIds.length === 0) {
               db.query(`
-                SELECT p.id, p.title, p.rating_count, p.rating_rate, p.image, p.price, p.category,
+                SELECT p.id, p.title, p.rating_count,p.rating_rate, p.image, p.price, p.category,
                        COUNT(oi.product_id) AS sales
                 FROM products p
                 LEFT JOIN order_items oi ON p.id = oi.product_id
