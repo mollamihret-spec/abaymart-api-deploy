@@ -16,13 +16,13 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    // 1️⃣ Extract info
+    //  Extract info
     const budget = extractBudget(question);
     const categoryIntent = detectCategory(question);
     const keywords = extractKeywords(question);
     const vibes = extractVibe(question);
 
-    // 2️⃣ Build SQL
+    //  Build SQL
     let sql = `
       SELECT id, image, title, rating_count, rating_rate, price, category, description 
       FROM products
@@ -31,20 +31,20 @@ router.post("/", async (req, res) => {
     const conditions = [];
     const params = [];
 
-    // ✅ Category filter
+    //  Category filter
     if (categoryIntent && categoryIntent.length > 0) {
       const placeholders = categoryIntent.map(() => "?").join(",");
       conditions.push(`category IN (${placeholders})`);
       params.push(...categoryIntent);
     }
 
-    // ✅ Budget filter
+    //  Budget filter
     if (budget && budget > 0) {
       conditions.push("price <= ?");
       params.push(budget);
     }
 
-    // ✅ STRICT Keyword filter (ALL keywords must match)
+    //  STRICT Keyword filter (ALL keywords must match)
     if (keywords.length > 0) {
       const keywordConditions = keywords
         .map(() => "(title LIKE ? OR description LIKE ?)")
@@ -58,7 +58,7 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ✅ STRICT Vibe filter (ALL vibes must match)
+    //  STRICT Vibe filter (ALL vibes must match)
     if (vibes.length > 0) {
       const vibeConditions = vibes
         .map(() => "(title LIKE ? OR description LIKE ?)")
@@ -79,10 +79,10 @@ router.post("/", async (req, res) => {
 
     sql += " LIMIT 30";
 
-    // 3️⃣ Execute query
+    //  Execute query
     let [rawProducts] = await db.query(sql, params);
 
-    // 🔥 Smart fallback (category + budget only)
+    //  Smart fallback (category + budget only)
     if (rawProducts.length === 0 && (keywords.length > 0 || vibes.length > 0)) {
 
       let fallbackSQL = `
@@ -114,7 +114,7 @@ router.post("/", async (req, res) => {
       rawProducts = fallbackProducts;
     }
 
-    // 4️⃣ Relevance scoring
+    //  Relevance scoring
     let products = rawProducts.map(product => {
       let score = 0;
       const title = product.title.toLowerCase();
@@ -146,7 +146,7 @@ router.post("/", async (req, res) => {
     // Final limit
     products = products.slice(0, 10);
 
-    // 5️⃣ If still empty
+    //  If still empty
     if (products.length === 0) {
       return res.json({
         success: true,
@@ -156,7 +156,7 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // 6️⃣ Build AI prompt
+    //  Build AI prompt
     const prompt = `
 You are Abaymart Shopping Assistant.
 
@@ -182,10 +182,10 @@ No markdown lists.
 Be professional.
 `;
 
-    // 7️⃣ Call AI
+    //  Call AI
     const answerText = await queryGroq(prompt);
 
-    // 8️⃣ Send response
+    //  Send response
     res.json({
       success: true,
       answer: answerText,

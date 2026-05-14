@@ -7,7 +7,7 @@ module.exports = (db) => {
   router.get("/:userId", (req, res) => {
     const userId = req.params.userId;
 
-    // 1️⃣ Get products
+    //  Get products
     db.query(
       "SELECT id, title, rating_rate, rating_count, image, price, category FROM products LIMIT 200",
       (err, products) => {
@@ -17,7 +17,7 @@ module.exports = (db) => {
           return res.status(500).json({ error: "Database error" });
         }
 
-        // 2️⃣ Get user purchases
+        //  Get user purchases
         db.query(
           `
           SELECT oi.product_id
@@ -35,7 +35,7 @@ module.exports = (db) => {
 
             const purchasedIds = userOrders.map(p => p.product_id);
 
-            // 🔥 Cold start → popular
+            //  Cold start → popular
             if (purchasedIds.length === 0) {
               db.query(`
                 SELECT p.id, p.title, p.rating_count,p.rating_rate, p.image, p.price, p.category,
@@ -57,7 +57,7 @@ module.exports = (db) => {
 
               return;
             }
-  // 3️⃣ Get all orders for collaborative filtering
+  //  Get all orders for collaborative filtering
             db.query(`
               SELECT o.user_id, oi.product_id
               FROM orders o
